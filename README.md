@@ -10,7 +10,7 @@
 - 配了番茄钟，能记目标、看统计、写手记，还有会动的天空和天气。
 - 目前先做Mac版，M芯片和Intel都能用。
 - 佛系开发，全vibe coding。有token就做，没token就鸽。
-- 欢迎随意引用改装，保留相关署名和许可。
+- 非商用随意改装，发布时保留[来源与许可](LICENSE)。
 
 参考了[wood3n/biu](https://github.com/wood3n/biu)，感谢原作者。相关实现遵循[非商业许可](Notices/README.md)。
 

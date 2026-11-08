@@ -47,6 +47,7 @@ if [[ "$CONFIGURATION" == debug ]]; then
     /usr/libexec/PlistBuddy -c "Add :LSEnvironment:LIUBAI_DATA_DIR string ${LIUBAI_DATA_DIR:-$PROJECT_DIR/.local-data}" "$APP_PATH/Contents/Info.plist"
 fi
 cp -R Notices "$APP_PATH/Contents/Resources/"
+cp LICENSE "$APP_PATH/Contents/Resources/LICENSE"
 swift -module-cache-path "$CLANG_MODULE_CACHE_PATH" scripts/MakeIcon.swift "$PROJECT_DIR/.build/AppIcon.iconset"
 iconutil -c icns .build/AppIcon.iconset -o "$APP_PATH/Contents/Resources/AppIcon.icns"
 codesign --force --deep --sign - "$APP_PATH"

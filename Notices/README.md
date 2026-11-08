@@ -11,3 +11,5 @@ Required Notice: Copyright (c) 2022–2025 wood3n
 该参考实现采用 **PolyForm Noncommercial License 1.0.0**，完整许可保存在 [biu-LICENSE.txt](biu-LICENSE.txt)，随应用资源一同分发。当前原型用于个人非商业使用；若计划商业发行，需要重新核对参考实现的授权范围。
 
 留白为非官方客户端，与哔哩哔哩无官方关联或背书。
+
+留白自身代码同样采用 [PolyForm Noncommercial License 1.0.0](../LICENSE)。非商业用途可修改和分发；分发原版或修改版时，请保留 LICENSE 中的 Required Notice（含项目来源）、许可条款和已有上游声明。
