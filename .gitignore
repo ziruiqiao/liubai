@@ -1,0 +1,7 @@
+.build/
+.swiftpm/
+dist/
+output/
+.local-data/
+.DS_Store
+*.log
