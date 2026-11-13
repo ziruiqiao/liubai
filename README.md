@@ -6,14 +6,15 @@
 - 想听B站音乐，但不想看视频分心。
 
 ## 功能
-- 导入合集、收藏夹，不下载音乐。
-- 番茄钟、目标、统计、手记和自定义心情，配上会动的天空和天气。
-- 十套主题随手切，菜单栏能切歌。
-- 先做Mac，M芯片和Intel都能用。
+- B站音乐、合集、收藏夹，在线播放，不下载音乐。
+- 番茄钟、目标、统计、手记、自定义心情。
+- 动态天空、天气，10套可选主题。
+- 菜单栏计时、切歌、主题切换。
+- Mac版，M芯片、Intel。
 - 佛系开发，全vibe coding。有token就做，没token就鸽。
 - 非商用随意改装，发布时保留[来源与许可](LICENSE)。
 
-参考了[wood3n/biu](https://github.com/wood3n/biu)，感谢原作者。相关实现遵循[非商业许可](Notices/README.md)。
+参考：[wood3n/biu](https://github.com/wood3n/biu)。[上游许可与署名](Notices/README.md)。
 
 
 ![专注空间](docs/images/focus.png)
