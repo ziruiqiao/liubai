@@ -20,6 +20,7 @@ struct Checks {
     static func main() async {
         do {
             try timerChecks()
+            passed += try PomodoroJournalChecks.run()
             try statisticsChecks()
             passed += try FocusHistoryChecks.run()
             try persistenceChecks()

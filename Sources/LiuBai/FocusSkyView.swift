@@ -2,92 +2,6 @@ import AppKit
 import LiuBaiCore
 import SwiftUI
 
-struct SkyColors {
-    let top: Color
-    let middle: Color
-    let bottom: Color
-    let landscapeFar: Color
-    let landscapeNear: Color
-    let ink: Color
-    let secondary: Color
-    let accent: Color
-    let face: Color
-    let controls: Color
-    let track: Color
-
-    init(_ sky: FocusSky) {
-        let light = sky.daylight
-        let lightFace = sky.daylight >= 0.5
-        // Keep sky colours in separate vertical bands. Mixing a blue sky with
-        // orange over the whole frame had cancelled their chroma into grey.
-        top = Self.skyColor(hour: sky.localHour, channel: \.top)
-        middle = Self.skyColor(hour: sky.localHour, channel: \.middle)
-        bottom = Self.skyColor(hour: sky.localHour, channel: \.bottom)
-        landscapeFar = Self.skyColor(hour: sky.localHour, channel: \.far)
-        landscapeNear = Self.skyColor(hour: sky.localHour, channel: \.near)
-        // Avoid blending the text and dial through the same middle grey at
-        // dawn/dusk; the numbers keep a clear light/dark contrast throughout.
-        ink = Color(hex: lightFace ? 0x344C49 : 0xF5F3E7)
-        secondary = Color(hex: lightFace ? 0x526B60 : 0xCAD6DC)
-        accent = Self.mix(0xE6D5A9, 0x5C7863, light)
-        face = Color(hex: lightFace ? 0xFCFCF2 : 0x24394F)
-        controls = Color(hex: lightFace ? 0xF6F7ED : 0x24394F)
-        track = Color(hex: lightFace ? 0xB2C5AE : 0x728896)
-    }
-    private struct SkyStop {
-        let hour: Double
-        let top: UInt32
-        let middle: UInt32
-        let bottom: UInt32
-        let far: UInt32
-        let near: UInt32
-    }
-    private static let skyStops: [SkyStop] = [
-        .init(hour: 0, top: 0x102655, middle: 0x244782, bottom: 0x426CB0, far: 0x305399, near: 0x23417F),
-        .init(hour: 4, top: 0x172D69, middle: 0x494DA0, bottom: 0xB591DC, far: 0x6C72BF, near: 0x515BA6),
-        .init(hour: 5, top: 0x426CC3, middle: 0xBAAAEF, bottom: 0xFFC294, far: 0xB19BD9, near: 0x8A8BD1),
-        .init(hour: 6.25, top: 0x58B5F5, middle: 0xF9C1E6, bottom: 0xFFD59A, far: 0xF3B7BD, near: 0xDA94AD),
-        .init(hour: 7, top: 0x46AEF8, middle: 0x9DD8FF, bottom: 0xF4C8F4, far: 0xC8BCED, near: 0xAAA6E5),
-        .init(hour: 8, top: 0x2CA5F5, middle: 0x75CFFF, bottom: 0xC8EFFF, far: 0x74C9DF, near: 0x43B6D2),
-        .init(hour: 12, top: 0x239FF5, middle: 0x68CAFF, bottom: 0xC1ECFF, far: 0x6AC7E1, near: 0x38AFD0),
-        .init(hour: 15, top: 0x36A5F5, middle: 0x83D1FF, bottom: 0xCDEEFF, far: 0x80CCDF, near: 0x52B7D3),
-        .init(hour: 16, top: 0x659DF1, middle: 0xB9CEFF, bottom: 0xFFE2D0, far: 0xC4B8E9, near: 0xA29EDC),
-        .init(hour: 17.5, top: 0x7B8BF0, middle: 0xF2B6DE, bottom: 0xFFC184, far: 0xD098D4, near: 0xB282CB),
-        .init(hour: 18, top: 0x586FD6, middle: 0xD599DF, bottom: 0xFFB97A, far: 0xB989CE, near: 0x966CC0),
-        .init(hour: 19, top: 0x304AA3, middle: 0x9477D1, bottom: 0xEBA7C3, far: 0x8B79C3, near: 0x6A65AF),
-        .init(hour: 21, top: 0x132D64, middle: 0x2B4D89, bottom: 0x4A70B4, far: 0x37599B, near: 0x294783),
-        .init(hour: 24, top: 0x102655, middle: 0x244782, bottom: 0x426CB0, far: 0x305399, near: 0x23417F)
-    ]
-    private static func skyColor(hour: Double, channel: KeyPath<SkyStop, UInt32>) -> Color {
-        let upper = skyStops.firstIndex(where: { $0.hour > hour }) ?? (skyStops.count - 1)
-        let left = skyStops[max(0, upper - 1)]
-        let right = skyStops[upper]
-        let t = min(1, max(0, (hour - left.hour) / max(0.001, right.hour - left.hour)))
-        let smooth = t * t * (3 - 2 * t)
-        let a = NSColor(Color(hex: left[keyPath: channel])).usingColorSpace(.sRGB)!
-        let b = NSColor(Color(hex: right[keyPath: channel])).usingColorSpace(.sRGB)!
-        var hueDelta = b.hueComponent - a.hueComponent
-        if hueDelta > 0.5 { hueDelta -= 1 }
-        if hueDelta < -0.5 { hueDelta += 1 }
-        let hue = (a.hueComponent + hueDelta * smooth + 1).truncatingRemainder(dividingBy: 1)
-        // Preserve chroma while time advances, instead of averaging distinct
-        // sky hues through a low-saturation RGB midpoint.
-        return Color(hue: hue, saturation: a.saturationComponent * (1 - smooth) + b.saturationComponent * smooth,
-                     brightness: a.brightnessComponent * (1 - smooth) + b.brightnessComponent * smooth)
-    }
-    static func mix(_ from: UInt32, _ to: UInt32, _ t: Double) -> Color {
-        mix(Color(hex: from), to, t)
-    }
-    static func mix(_ from: Color, _ to: UInt32, _ t: Double) -> Color {
-        let first = NSColor(from).usingColorSpace(.sRGB)!
-        let second = NSColor(Color(hex: to)).usingColorSpace(.sRGB)!
-        let t = min(1, max(0, t))
-        return Color(.sRGB, red: first.redComponent * (1 - t) + second.redComponent * t,
-                     green: first.greenComponent * (1 - t) + second.greenComponent * t,
-                     blue: first.blueComponent * (1 - t) + second.blueComponent * t, opacity: 1)
-    }
-}
-
 /// Absolute time also drives the decorative motion, so reopening the window
 /// resumes the sky at the right position instead of restarting an animation.
 struct FocusSkyBackground: View {
@@ -150,24 +64,24 @@ struct FocusSkyScene: View {
         body.opacity = sky.bodyOpacity
         let halo = rect.insetBy(dx: -diameter * 0.38, dy: -diameter * 0.38)
         body.fill(Path(ellipseIn: halo), with: .radialGradient(Gradient(colors: [
-            (sky.isDay ? Color(hex: 0xFFE3AA) : Color(hex: 0xDDE9E9)).opacity(sky.isDay ? 0.44 : 0.15), .clear
+            (sky.isDay ? SkyPalette.sunHalo : SkyPalette.moonHalo).opacity(sky.isDay ? 0.44 : 0.15), .clear
         ]), center: point, startRadius: diameter * 0.22, endRadius: diameter * 0.88))
         if sky.isDay {
-            body.fill(Path(ellipseIn: rect), with: .linearGradient(Gradient(colors: [Color(hex: 0xFFF3BC), Color(hex: 0xEAB86F)]),
+            body.fill(Path(ellipseIn: rect), with: .linearGradient(Gradient(colors: [SkyPalette.sunTop, SkyPalette.sunBottom]),
                                                                  startPoint: CGPoint(x: point.x, y: rect.minY), endPoint: CGPoint(x: point.x, y: rect.maxY)))
-            body.stroke(Path(ellipseIn: rect.insetBy(dx: 7, dy: 7)), with: .color(.white.opacity(0.13)), lineWidth: 1)
+            body.stroke(Path(ellipseIn: rect.insetBy(dx: 7, dy: 7)), with: .color(SkyPalette.bodyOutline.opacity(0.13)), lineWidth: 1)
         } else {
             body.drawLayer { moon in
-                moon.fill(Path(ellipseIn: rect), with: .linearGradient(Gradient(colors: [Color(hex: 0xFCF6D8), Color(hex: 0xC9D8CD)]),
+                moon.fill(Path(ellipseIn: rect), with: .linearGradient(Gradient(colors: [SkyPalette.moonTop, SkyPalette.moonBottom]),
                                                                      startPoint: CGPoint(x: rect.minX, y: rect.minY), endPoint: CGPoint(x: rect.maxX, y: rect.maxY)))
                 for (x, y, radius) in [(0.23, 0.44, 0.065), (0.32, 0.74, 0.045), (0.17, 0.59, 0.026)] {
                     let mark = CGRect(x: rect.minX + diameter * x, y: rect.minY + diameter * y, width: diameter * radius, height: diameter * radius)
-                    moon.fill(Path(ellipseIn: mark), with: .color(Color(hex: 0x8EAAA9).opacity(0.17)))
+                    moon.fill(Path(ellipseIn: mark), with: .color(SkyPalette.moonCrater.opacity(0.17)))
                 }
                 // Subtract in an isolated layer so the dark side has no faint
                 // circular seam and does not erase the sky or stars beneath it.
                 moon.blendMode = .destinationOut
-                moon.fill(Path(ellipseIn: rect.offsetBy(dx: diameter * 0.45, dy: -diameter * 0.10)), with: .color(.black))
+                moon.fill(Path(ellipseIn: rect.offsetBy(dx: diameter * 0.45, dy: -diameter * 0.10)), with: .color(SkyPalette.mask))
             }
         }
     }
@@ -186,7 +100,7 @@ struct FocusSkyScene: View {
             cloud.translateBy(x: x, y: y)
             cloud.opacity = cloudLight * (foreground ? 0.72 : 0.48)
             if !foreground { cloud.addFilter(.blur(radius: 0.8)) }
-            cloud.fill(Self.cloudPath(width: width, height: height), with: .linearGradient(Gradient(colors: [.white, Color(hex: 0xF2FAFF).opacity(0.78)]),
+            cloud.fill(Self.cloudPath(width: width, height: height), with: .linearGradient(Gradient(colors: [SkyPalette.cloud, SkyPalette.cloudShade.opacity(0.78)]),
                                                                                           startPoint: .zero, endPoint: CGPoint(x: 0, y: height)))
         }
     }
@@ -228,11 +142,11 @@ struct FocusSkyScene: View {
             let point = CGPoint(x: pole.x + cos(angle) * star.radius * scale,
                                 y: pole.y + sin(angle) * star.radius * scale)
             let radius = star.size
-            let color = Color(hex: 0xF4EEDC).opacity(star.opacity * strength)
+            let color = SkyPalette.star.opacity(star.opacity * strength)
             context.fill(Path(ellipseIn: CGRect(x: point.x - radius, y: point.y - radius, width: radius * 2, height: radius * 2)), with: .color(color))
             if index % 9 == 0 { cross(context, point: point, length: radius * 3.1, color: color.opacity(0.75)) }
         }
-        cross(context, point: pole, length: 4, color: Color(hex: 0xF4EEDC).opacity(strength * 0.7))
+        cross(context, point: pole, length: 4, color: SkyPalette.star.opacity(strength * 0.7))
     }
     private func cross(_ context: GraphicsContext, point: CGPoint, length: Double, color: Color) {
         var path = Path()
@@ -279,7 +193,7 @@ struct FocusSkyScene: View {
                 var line = Path()
                 line.move(to: CGPoint(x: x, y: y))
                 line.addCurve(to: CGPoint(x: x + 105, y: y - 3), control1: CGPoint(x: x + 34, y: y - 12), control2: CGPoint(x: x + 65, y: y + 9))
-                context.stroke(line, with: .color(.white.opacity(0.10 + strength * 0.20)), style: StrokeStyle(lineWidth: 1, lineCap: .round))
+                context.stroke(line, with: .color(SkyPalette.wind.opacity(0.10 + strength * 0.20)), style: StrokeStyle(lineWidth: 1, lineCap: .round))
             }
         }
         guard weather.precipitation != .none, weather.intensity > 0 else { return }
@@ -294,14 +208,14 @@ struct FocusSkyScene: View {
             let y = wrap(particle.y * spanY + time * speed, spanY) - 20
             if snow {
                 let radius = (1.1 + particle.size * 1.5) * (weather.isHeavy ? 1.18 : 1)
-                let color = Color.white.opacity(sky.isDay ? 0.66 : 0.52)
+                let color = SkyPalette.snow.opacity(sky.isDay ? 0.66 : 0.52)
                 context.fill(Path(ellipseIn: CGRect(x: x, y: y, width: radius * 2, height: radius * 2)), with: .color(color))
                 if index % 9 == 0 { cross(context, point: CGPoint(x: x + radius, y: y + radius), length: radius * 2, color: color.opacity(0.6)) }
             } else {
                 var drop = Path()
                 drop.move(to: CGPoint(x: x, y: y))
                 drop.addLine(to: CGPoint(x: x + weather.horizontalWind * (2 + weather.windKmh * 0.06) * (weather.isHeavy ? 2 : 1), y: y + (8 + particle.size * 6) * (weather.isHeavy ? 1.6 : 1)))
-                context.stroke(drop, with: .color(Color(hex: 0xE9F7FF).opacity(sky.isDay ? (weather.isHeavy ? 0.55 : 0.40) : (weather.isHeavy ? 0.42 : 0.28))), style: StrokeStyle(lineWidth: weather.isHeavy ? 1.1 : 0.85, lineCap: .round))
+                context.stroke(drop, with: .color(SkyPalette.rain.opacity(sky.isDay ? (weather.isHeavy ? 0.55 : 0.40) : (weather.isHeavy ? 0.42 : 0.28))), style: StrokeStyle(lineWidth: weather.isHeavy ? 1.1 : 0.85, lineCap: .round))
             }
         }
     }

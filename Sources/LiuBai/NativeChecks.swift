@@ -2,10 +2,22 @@
 import AppKit
 import LiuBaiCore
 import SwiftUI
+import Observation
+import os
 
 @MainActor
 enum NativeChecks {
     static func run(store: AppStore) throws {
+        let originalTheme = ThemeManager.shared.selectedID
+        defer { ThemeManager.shared.select(originalTheme) }
+        let notified = OSAllocatedUnfairLock(initialState: false)
+        withObservationTracking { _ = Palette.accent } onChange: { notified.withLock { $0 = true } }
+        ThemeManager.shared.select(originalTheme == "iris" ? "indigo" : "iris")
+        try expect(notified.withLock { $0 }, "Palette reads must invalidate live views when switching themes")
+        ThemeManager.shared.select(originalTheme)
+        print("PASS: theme changes invalidate observed palette reads")
+        try store.checkBreakMusicResumption()
+        print("PASS: break music waits for actual focus start, independently for short and long breaks")
         let original = store.data
         defer { store.data = original; store.saveNow() }
         store.data = AppData()
@@ -39,7 +51,10 @@ enum NativeChecks {
         }
         window.makeFirstResponder(editor)
         editor.setMarkedText("ni", selectedRange: NSRange(location: 2, length: 0), replacementRange: NSRange(location: NSNotFound, length: 0))
+        let previousTheme = ThemeManager.shared.selectedID
+        ThemeManager.shared.select(previousTheme == "iris" ? "indigo" : "iris")
         store.saveNow(); refresh(hosting, delay: 0.65)
+        ThemeManager.shared.select(previousTheme)
         try expect(editor.hasMarkedText() && editor.string == "ni" && store.entry(for: date).body.isEmpty,
                    "Autosave must retain the native composition buffer without saving unconfirmed pinyin")
         editor.setMarkedText("ni hao", selectedRange: NSRange(location: 6, length: 0), replacementRange: NSRange(location: NSNotFound, length: 0))

@@ -6,11 +6,15 @@ struct RootView: View {
     var skyDate: Date? = nil
     var motionDate: Date? = nil
     var weatherOverride: SkyWeather? = nil
+    var sidebarCollapsedOverride: Bool? = nil
+    @AppStorage("liubai.sidebarCollapsed") private var sidebarCollapsed = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    private var isSidebarCollapsed: Bool { sidebarCollapsedOverride ?? sidebarCollapsed }
     @EnvironmentObject private var store: AppStore
     @EnvironmentObject private var weather: WeatherController
     var body: some View {
         HStack(spacing: 0) {
-            sidebar
+            if !isSidebarCollapsed { sidebar }
             VStack(spacing: 0) {
                 VStack(alignment: .leading, spacing: 0) {
                     header
@@ -25,7 +29,11 @@ struct RootView: View {
                     }
                     content
                 }.padding(.horizontal, 30).padding(.top, 25).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                PlayerBar()
+                if store.screen == .focus {
+                    PlayerBar(floating: true)
+                        .frame(maxWidth: 940)
+                        .padding(.horizontal, 24).padding(.bottom, 16)
+                } else { PlayerBar() }
             }
             .background {
                 if store.screen == .focus {
@@ -36,10 +44,24 @@ struct RootView: View {
             }
             .environment(\.focusSkySurface, store.screen == .focus)
         }
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.18), value: isSidebarCollapsed)
         .background(Palette.background).foregroundStyle(Palette.text).tint(Palette.accent)
         .preferredColorScheme(.light)
         .frame(minWidth: 1080, minHeight: 760)
         .background(WindowChromeView().allowsHitTesting(false))
+        .overlay {
+            if store.screen == .focus {
+                // Measure the whole window, including the sidebar, title bar
+                // and player, rather than the remaining focus content area.
+                GeometryReader { geometry in
+                    TimerDial(skyDate: skyDate, compact: true, floatsOnSky: true)
+                        .fixedSize()
+                        .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
+                }
+                .ignoresSafeArea(.container, edges: .top)
+                .allowsHitTesting(false)
+            }
+        }
         .sheet(isPresented: $store.showImport) { ImportMusicView() }
         .sheet(isPresented: $store.showCollectionImport) { CollectionImportView() }
         .task(id: store.data.usesWeather) { weather.start(enabled: store.data.usesWeather) }
@@ -58,7 +80,7 @@ struct RootView: View {
                 }.foregroundStyle(Palette.text).padding(.leading, 16).padding(.trailing, 5).padding(.vertical, 7)
                     .background(Palette.surface, in: RoundedRectangle(cornerRadius: 12))
                     .overlay(RoundedRectangle(cornerRadius: 12).stroke(Palette.line))
-                    .shadow(color: .black.opacity(0.05), radius: 12, y: 4)
+                    .shadow(color: Palette.shadow.opacity(0.05), radius: 12, y: 4)
                     .padding(.top, 8).padding(.trailing, 24)
             }
         }
@@ -108,6 +130,16 @@ struct RootView: View {
     }
     private var header: some View {
         return HStack(alignment: .center, spacing: 12) {
+            Button { sidebarCollapsed.toggle() } label: {
+                Image(systemName: "sidebar.left")
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundStyle(Palette.accent)
+                    .frame(width: 32, height: 32)
+                    .background(Palette.surface.opacity(0.80), in: RoundedRectangle(cornerRadius: 9))
+            }.buttonStyle(.plain)
+                .help(isSidebarCollapsed ? "展开导航栏 ⌃⌘S" : "折叠导航栏 ⌃⌘S")
+                .accessibilityLabel(isSidebarCollapsed ? "展开导航栏" : "折叠导航栏")
+                .keyboardShortcut("s", modifiers: [.command, .control])
             if store.screen != .focus {
                 Text(store.screen.title).font(.system(size: 27, weight: .semibold))
             }

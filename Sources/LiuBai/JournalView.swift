@@ -6,7 +6,21 @@ struct JournalView: View {
     @State private var selectedDate = Date()
     @State private var search = ""
     @State private var confirmDelete = false
-    private let moods = ["很棒", "平静", "一般", "低落"]
+    @State private var showMoodEditor = false
+    @State private var newMood = ""
+    private var moods: [String] {
+        let saved = store.data.availableMoods
+        return saved.contains(entry.mood) ? saved : saved + [entry.mood]
+    }
+    private var canSaveMood: Bool {
+        let value = newMood.trimmingCharacters(in: .whitespacesAndNewlines)
+        return !value.isEmpty && value.count <= 12 && !value.contains("\n") && !value.contains("\r")
+    }
+    private func saveMood() {
+        guard canSaveMood, store.addMood(newMood, for: selectedDate) else { return }
+        showMoodEditor = false
+        newMood = ""
+    }
     private var entry: JournalEntry { store.entry(for: selectedDate) }
     private var entries: [JournalEntry] {
         store.data.journal.values.filter { $0.hasContent && (search.isEmpty || "\($0.title) \($0.body) \($0.id)".localizedCaseInsensitiveContains(search)) }
@@ -72,13 +86,30 @@ struct JournalView: View {
                         .frame(height: 32)
                     HStack(spacing: 8) {
                         Text("今天的心情").font(.system(size: 10)).foregroundStyle(Palette.secondary).padding(.trailing, 6)
-                        ForEach(moods, id: \.self) { mood in
-                            Button { store.updateJournal(for: selectedDate) { $0.mood = mood } } label: {
-                                Text(mood).font(.system(size: 10)).foregroundStyle(entry.mood == mood ? Palette.accent : Palette.secondary)
-                                    .padding(.horizontal, 11).padding(.vertical, 7)
-                                    .background(entry.mood == mood ? Palette.softAccent : Palette.background, in: Capsule())
-                            }.buttonStyle(.plain)
-                        }
+                        ScrollView(.horizontal) {
+                            HStack(spacing: 8) {
+                                ForEach(moods, id: \.self) { mood in
+                                    Button { store.updateJournal(for: selectedDate) { $0.mood = mood } } label: {
+                                        Text(mood).font(.system(size: 10)).foregroundStyle(entry.mood == mood ? Palette.accent : Palette.secondary)
+                                            .padding(.horizontal, 11).padding(.vertical, 7)
+                                            .background(entry.mood == mood ? Palette.softAccent : Palette.background, in: Capsule())
+                                    }.buttonStyle(.plain)
+                                }
+                            }
+                        }.scrollIndicators(.hidden).frame(height: 30)
+                        Button { newMood = ""; showMoodEditor = true } label: {
+                            Label("添加心情", systemImage: "plus").font(.system(size: 10)).foregroundStyle(Palette.accent)
+                        }.buttonStyle(.plain).fixedSize()
+                            .popover(isPresented: $showMoodEditor) {
+                                VStack(alignment: .leading, spacing: 14) {
+                                    TextField("写个心情，最多 12 字", text: $newMood).textFieldStyle(.roundedBorder).onSubmit(saveMood)
+                                    HStack {
+                                        Button("取消") { showMoodEditor = false }
+                                        Spacer()
+                                        Button("保存", action: saveMood).buttonStyle(.borderedProminent).disabled(!canSaveMood)
+                                    }
+                                }.padding(18).frame(width: 250).tint(Palette.accent)
+                            }
                     }
                     let stats = store.stats(for: selectedDate)
                     HStack(spacing: 15) {

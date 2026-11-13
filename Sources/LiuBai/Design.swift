@@ -1,24 +1,5 @@
 import SwiftUI
 
-enum Palette {
-    static let background = Color(hex: 0xF7F8F3)
-    static let sidebar = Color(hex: 0xF0F2EB)
-    static let surface = Color(hex: 0xFFFFFF)
-    static let text = Color(hex: 0x30392F)
-    static let secondary = Color(hex: 0x7B8375)
-    static let line = Color(hex: 0xE4E8DD)
-    static let accent = Color(hex: 0x667D55)
-    static let softAccent = Color(hex: 0xE8EDDF)
-    static let warm = Color(hex: 0xB47F65)
-    static let softWarm = Color(hex: 0xF7EEE7)
-}
-
-extension Color {
-    init(hex: UInt32) {
-        self.init(.sRGB, red: Double((hex >> 16) & 255) / 255, green: Double((hex >> 8) & 255) / 255, blue: Double(hex & 255) / 255, opacity: 1)
-    }
-}
-
 private struct FocusSkySurfaceKey: EnvironmentKey { static let defaultValue = false }
 extension EnvironmentValues {
     var focusSkySurface: Bool {
@@ -32,8 +13,8 @@ struct Panel<Content: View>: View {
     var padding: CGFloat = 24
     @ViewBuilder var content: Content
     var body: some View {
-        content.padding(padding).background(Palette.surface.opacity(skySurface ? 0.80 : 1), in: RoundedRectangle(cornerRadius: 20))
-            .overlay(RoundedRectangle(cornerRadius: 20).stroke(skySurface ? .white.opacity(0.50) : Palette.line.opacity(0.8), lineWidth: 1))
+        content.padding(padding).background(Palette.surface.opacity(skySurface ? ThemeOpacity.cardOnSky : 1), in: RoundedRectangle(cornerRadius: 20))
+            .overlay(RoundedRectangle(cornerRadius: 20).stroke(skySurface ? Palette.outline.opacity(0.50) : Palette.line.opacity(0.8), lineWidth: 1))
     }
 }
 
@@ -50,7 +31,7 @@ struct PrimaryButton: View {
             }
             .frame(maxWidth: wide ? .infinity : nil)
             .padding(.horizontal, 21).padding(.vertical, 12)
-            .foregroundStyle(.white).background(Palette.accent, in: RoundedRectangle(cornerRadius: 11))
+            .foregroundStyle(Palette.onAccent).background(Palette.accent, in: RoundedRectangle(cornerRadius: 11))
             .contentShape(RoundedRectangle(cornerRadius: 11))
         }.buttonStyle(.plain)
     }
@@ -89,8 +70,8 @@ struct LogoMark: View {
     var size: CGFloat = 42
     var body: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: size * 0.3).fill(Palette.accent)
-            Image(systemName: "leaf").font(.system(size: size * 0.55, weight: .light)).foregroundStyle(.white)
+            RoundedRectangle(cornerRadius: size * 0.3).fill(LinearGradient(colors: [Palette.logoTop, Palette.logoBottom], startPoint: .top, endPoint: .bottom))
+            Image(systemName: "leaf").font(.system(size: size * 0.55, weight: .light)).foregroundStyle(Palette.logoGlyph)
         }.frame(width: size, height: size).accessibilityHidden(true)
     }
 }

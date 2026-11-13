@@ -39,6 +39,7 @@ else
 fi
 cp Resources/Info.plist "$APP_PATH/Contents/Info.plist"
 cp Resources/StarterTracks.json "$APP_PATH/Contents/Resources/StarterTracks.json"
+cp Resources/Theme.json "$APP_PATH/Contents/Resources/Theme.json"
 if [[ "$CONFIGURATION" == debug ]]; then
     if [[ -n "${LIUBAI_BUNDLE_ID:-}" ]]; then
         /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier $LIUBAI_BUNDLE_ID" "$APP_PATH/Contents/Info.plist"
@@ -48,7 +49,7 @@ if [[ "$CONFIGURATION" == debug ]]; then
 fi
 cp -R Notices "$APP_PATH/Contents/Resources/"
 cp LICENSE "$APP_PATH/Contents/Resources/LICENSE"
-swift -module-cache-path "$CLANG_MODULE_CACHE_PATH" scripts/MakeIcon.swift "$PROJECT_DIR/.build/AppIcon.iconset"
+swift -module-cache-path "$CLANG_MODULE_CACHE_PATH" scripts/MakeIcon.swift "$PROJECT_DIR/.build/AppIcon.iconset" "$APP_PATH/Contents/Resources/Theme.json"
 iconutil -c icns .build/AppIcon.iconset -o "$APP_PATH/Contents/Resources/AppIcon.icns"
 codesign --force --deep --sign - "$APP_PATH"
 codesign --verify --deep --strict "$APP_PATH"

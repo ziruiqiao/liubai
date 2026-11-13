@@ -8,7 +8,7 @@ public final class CompletionChime {
     private var player: AVAudioPlayer?
     public init() {}
     @discardableResult
-    public func play(volume: Float = 0.12) -> Bool {
+    public func play(volume: Float = 0.65) -> Bool {
         do {
             let player = try AVAudioPlayer(data: Self.wave())
             player.volume = max(0, min(1, volume))
@@ -21,15 +21,20 @@ public final class CompletionChime {
 
     private static func wave() -> Data {
         let rate = 44_100
-        let duration = 0.55
+        let duration = 1.25
         let count = Int(Double(rate) * duration)
         var samples = Data(capacity: count * 2)
         for index in 0..<count {
             let time = Double(index) / Double(rate)
-            let fadeIn = min(1, time / 0.018)
-            let fadeOut = min(1, (duration - time) / 0.12)
-            let envelope = fadeIn * fadeOut * exp(-4 * time)
-            let signal = (sin(2 * .pi * 659.25 * time) + 0.45 * sin(2 * .pi * 987.77 * time)) * envelope * 0.45
+            var signal = 0.0
+            for (onset, pitch) in [(0.0, 659.25), (0.58, 783.99)] {
+                let elapsed = time - onset
+                guard elapsed >= 0, elapsed < 0.67 else { continue }
+                let fadeIn = min(1, elapsed / 0.012)
+                let fadeOut = min(1, (0.67 - elapsed) / 0.14)
+                let envelope = fadeIn * fadeOut * exp(-3 * elapsed)
+                signal += (sin(2 * .pi * pitch * elapsed) + 0.35 * sin(2 * .pi * pitch * 1.5 * elapsed)) * envelope * 0.48
+            }
             var value = Int16(max(-32767, min(32767, signal * 32767))).littleEndian
             withUnsafeBytes(of: &value) { samples.append(contentsOf: $0) }
         }

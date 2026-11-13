@@ -18,8 +18,16 @@ struct PreferencesView: View {
                         Rectangle().fill(Palette.line).frame(height: 1)
                         settingToggle("休息时自动暂停音乐", detail: "关闭时，音乐持续播放。", keyPath: \.pauseMusicDuringBreak)
                         settingToggle("自动开始休息", keyPath: \.autoStartBreak)
-                        settingToggle("自动开始下一轮专注", keyPath: \.autoStartFocus)
+                        settingToggle("自动开始下一轮专注", detail: "短休息结束后继续专注。", keyPath: \.autoStartFocus)
+                        settingToggle("长休息后自动开始新循环", detail: "关闭时等待手动开始，默认关闭。", keyPath: \.autoStartCycle)
                         settingToggle("阶段结束提示音", detail: "与音乐同时播放。", keyPath: \.soundEnabled)
+                        HStack(spacing: 14) {
+                            Text("提示音音量").font(.system(size: 12))
+                            Spacer()
+                            Slider(value: Binding(get: { Double(store.data.preferences.chimeVolume) }, set: { value in store.updatePreferences { $0.chimeVolume = Float(value) } }), in: 0...1).frame(width: 165)
+                            Text("\(Int(store.data.preferences.chimeVolume * 100))%").font(.system(size: 11, design: .monospaced)).foregroundStyle(Palette.secondary).frame(width: 38, alignment: .trailing)
+                            QuietButton(title: "试听", icon: "speaker.wave.2") { store.previewCompletionSound() }
+                        }
                     }
                 }
                 Panel {

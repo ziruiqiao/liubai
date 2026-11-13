@@ -164,18 +164,19 @@ struct ImportMusicView: View {
 }
 
 struct PlayerBar: View {
+    var floating = false
     @Environment(\.focusSkySurface) private var skySurface
     @EnvironmentObject private var store: AppStore
     @EnvironmentObject private var audio: AudioController
     @State private var dragging = false
     @State private var seekPosition: Double = 0
     var body: some View {
-        HStack(spacing: 22) {
+        HStack(spacing: floating ? 16 : 22) {
             HStack(spacing: 12) {
                 ZStack {
                     RoundedRectangle(cornerRadius: 12).fill(Palette.softAccent.opacity(0.7))
                     Image(systemName: "waveform").font(.system(size: 21, weight: .light)).foregroundStyle(Palette.accent)
-                }.frame(width: 46, height: 46)
+                }.frame(width: floating ? 38 : 46, height: floating ? 38 : 46)
                 VStack(alignment: .leading, spacing: 6) {
                     Text(audio.currentTrack?.title ?? "未播放")
                         .font(.system(size: 11, weight: .medium)).lineLimit(1)
@@ -189,7 +190,7 @@ struct PlayerBar: View {
                         }
                     }
                 }
-            }.frame(width: 240, alignment: .leading)
+            }.frame(width: floating ? 190 : 240, alignment: .leading)
             VStack(spacing: 3) {
                 HStack(spacing: 16) {
                     IconButton(icon: "backward.end.fill", title: "上一首") { store.previousTrack() }.disabled(store.playbackTracks.isEmpty)
@@ -197,7 +198,7 @@ struct PlayerBar: View {
                         ZStack {
                             Circle().fill(Palette.accent).frame(width: 34, height: 34)
                             if audio.isLoading { ProgressView().controlSize(.mini).colorScheme(.dark) }
-                            else { Image(systemName: audio.wantsToPlay ? "pause.fill" : "play.fill").font(.system(size: 13)).foregroundStyle(.white).offset(x: audio.wantsToPlay ? 0 : 1) }
+                            else { Image(systemName: audio.wantsToPlay ? "pause.fill" : "play.fill").font(.system(size: 13)).foregroundStyle(Palette.onAccent).offset(x: audio.wantsToPlay ? 0 : 1) }
                         }
                     }.buttonStyle(.plain).accessibilityLabel(audio.wantsToPlay ? "暂停播放" : "播放音乐")
                     IconButton(icon: "forward.end.fill", title: "下一首") { store.nextTrack() }.disabled(store.playbackTracks.isEmpty)
@@ -219,7 +220,18 @@ struct PlayerBar: View {
                 Slider(value: Binding(get: { Double(store.data.preferences.volume) }, set: { value in store.updatePreferences { $0.volume = Float(value) } }), in: 0...1)
                     .controlSize(.mini).frame(width: 70).accessibilityLabel("音量")
             }
-        }.padding(.horizontal, 26).padding(.vertical, 14).frame(height: 92)
-            .background(Palette.surface.opacity(skySurface ? 0.90 : 1)).overlay(alignment: .top) { Rectangle().fill(Palette.line).frame(height: 1) }
+        }.padding(.horizontal, floating ? 18 : 26).padding(.vertical, floating ? 10 : 14).frame(height: floating ? 76 : 92)
+            .background {
+                if floating {
+                    RoundedRectangle(cornerRadius: 20).fill(Palette.surface.opacity(ThemeOpacity.floatingPlayer))
+                        .shadow(color: Palette.shadow.opacity(0.10), radius: 14, y: 4)
+                } else { Palette.surface.opacity(skySurface ? 0.90 : 1) }
+            }
+            .overlay {
+                if floating { RoundedRectangle(cornerRadius: 20).stroke(Palette.outline.opacity(ThemeOpacity.floatingPlayerBorder), lineWidth: 1) }
+            }
+            .overlay(alignment: .top) {
+                if !floating { Rectangle().fill(Palette.line).frame(height: 1) }
+            }
     }
 }

@@ -49,7 +49,13 @@ public struct PomodoroEngine: Codable, Equatable, Sendable {
             } else { phase = .shortBreak }
         } else { phase = .focus }
         reset(preferences: preferences)
-        if (completed == .focus && preferences.autoStartBreak) || (completed != .focus && preferences.autoStartFocus) {
+        let shouldStart: Bool
+        switch completed {
+        case .focus: shouldStart = preferences.autoStartBreak
+        case .shortBreak: shouldStart = preferences.autoStartFocus
+        case .longBreak: shouldStart = preferences.autoStartCycle
+        }
+        if shouldStart {
             start(at: now)
         }
         return TimerCompletion(phase: completed, finishedAt: finish)

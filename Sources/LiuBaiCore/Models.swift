@@ -27,10 +27,32 @@ public struct Preferences: Codable, Equatable, Sendable {
     public var pauseMusicDuringBreak = false
     public var autoStartBreak = false
     public var autoStartFocus = false
+    public var autoStartCycle = false
+    public var chimeVolume: Float = 0.65
     public var soundEnabled = true
     public var repeatTrack = false
     public var volume: Float = 0.65
     public init() {}
+
+    private enum CodingKeys: String, CodingKey {
+        case focusMinutes, shortBreakMinutes, longBreakMinutes, roundsBeforeLongBreak, pauseMusicDuringBreak, autoStartBreak, autoStartFocus, autoStartCycle, soundEnabled, chimeVolume, repeatTrack, volume
+    }
+    public init(from decoder: Decoder) throws {
+        self.init()
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        focusMinutes = try values.decodeIfPresent(Int.self, forKey: .focusMinutes) ?? focusMinutes
+        shortBreakMinutes = try values.decodeIfPresent(Int.self, forKey: .shortBreakMinutes) ?? shortBreakMinutes
+        longBreakMinutes = try values.decodeIfPresent(Int.self, forKey: .longBreakMinutes) ?? longBreakMinutes
+        roundsBeforeLongBreak = try values.decodeIfPresent(Int.self, forKey: .roundsBeforeLongBreak) ?? roundsBeforeLongBreak
+        pauseMusicDuringBreak = try values.decodeIfPresent(Bool.self, forKey: .pauseMusicDuringBreak) ?? pauseMusicDuringBreak
+        autoStartBreak = try values.decodeIfPresent(Bool.self, forKey: .autoStartBreak) ?? autoStartBreak
+        autoStartFocus = try values.decodeIfPresent(Bool.self, forKey: .autoStartFocus) ?? autoStartFocus
+        autoStartCycle = try values.decodeIfPresent(Bool.self, forKey: .autoStartCycle) ?? autoStartCycle
+        soundEnabled = try values.decodeIfPresent(Bool.self, forKey: .soundEnabled) ?? soundEnabled
+        chimeVolume = try values.decodeIfPresent(Float.self, forKey: .chimeVolume) ?? chimeVolume
+        repeatTrack = try values.decodeIfPresent(Bool.self, forKey: .repeatTrack) ?? repeatTrack
+        volume = try values.decodeIfPresent(Float.self, forKey: .volume) ?? volume
+    }
 
     public func duration(for phase: TimerPhase) -> TimeInterval {
         switch phase {
@@ -85,6 +107,7 @@ public struct AppData: Codable, Sendable {
     public var weatherEnabled: Bool?
     public var focusBlocks: [FocusBlock]?
     public var activeFocusBlockID: UUID?
+    public var customMoods: [String]?
     public var usesWeather: Bool { weatherEnabled ?? true }
     public init() {}
 }
@@ -111,5 +134,22 @@ public enum TimeText {
         let minutes = max(0, Int(seconds / 60))
         if seconds > 0 && minutes == 0 { return "不足 1 分钟" }
         return minutes >= 60 ? "\(minutes / 60) 小时 \(minutes % 60) 分钟" : "\(minutes) 分钟"
+    }
+}
+
+public extension AppData {
+    var availableMoods: [String] {
+        var result = ["很棒", "平静", "一般", "低落"]
+        for mood in customMoods ?? [] where !result.contains(mood) { result.append(mood) }
+        return result
+    }
+    /// Mood choices belong to the library, independently of individual entries.
+    @discardableResult
+    mutating func registerMood(_ input: String) -> String? {
+        let mood = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !mood.isEmpty, mood.count <= 12, !mood.contains("\n"), !mood.contains("\r") else { return nil }
+        if let existing = availableMoods.first(where: { $0.localizedCaseInsensitiveCompare(mood) == .orderedSame }) { return existing }
+        customMoods = (customMoods ?? []) + [mood]
+        return mood
     }
 }

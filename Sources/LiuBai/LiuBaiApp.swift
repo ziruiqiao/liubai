@@ -33,7 +33,7 @@ struct LiuBaiApp: App {
     var body: some Scene {
         Window("留白", id: "main") {
             RootView().environmentObject(store).environmentObject(store.audio).environmentObject(store.favorites).environmentObject(store.weather)
-                .onAppear { delegate.store = store }
+                .onAppear { delegate.store = store; ThemeManager.shared.updateDockIcon() }
         }
         .defaultSize(width: 1200, height: 840)
         .windowStyle(.hiddenTitleBar)
@@ -41,8 +41,12 @@ struct LiuBaiApp: App {
         MenuBarExtra {
             MenuBarView().environmentObject(store).environmentObject(store.audio).environmentObject(store.weather)
         } label: {
-            if store.data.timer.isRunning { Label(TimeText.clock(store.remaining), systemImage: "leaf") }
-            else { Label("留白", systemImage: "leaf") }
+            HStack(spacing: 5) {
+                Image(systemName: "leaf").renderingMode(.original).foregroundStyle(Palette.menuBarIcon)
+                if store.data.timer.isRunning {
+                    Text(TimeText.clock(store.remaining)).monospacedDigit().foregroundStyle(Palette.menuBarText)
+                }
+            }.accessibilityLabel(store.data.timer.isRunning ? "留白，剩余 \(TimeText.clock(store.remaining))" : "留白")
         }.menuBarExtraStyle(.window)
     }
 }
@@ -79,27 +83,36 @@ struct MenuBarView: View {
     @EnvironmentObject private var weather: WeatherController
     @Environment(\.openWindow) private var openWindow
     var body: some View {
-        let colors = SkyColors(FocusSky(date: skyDate ?? store.now))
+        let colors = OverlayColors(FocusSky(date: skyDate ?? store.now))
         VStack(spacing: 12) {
             HStack {
                 Label("留白", systemImage: "leaf")
                     .padding(.horizontal, 8).padding(.vertical, 5)
-                    .background(Palette.surface.opacity(0.78), in: Capsule())
+                    .background(Palette.surface.opacity(ThemeOpacity.menuChip), in: Capsule())
                 Spacer()
+                Menu {
+                    ForEach(ThemeManager.shared.options) { option in
+                        Button { ThemeManager.shared.select(option.id) } label: {
+                            if ThemeManager.shared.selectedID == option.id { Label(option.name, systemImage: "checkmark") }
+                            else { Text(option.name) }
+                        }
+                    }
+                } label: { Label("主题", systemImage: "paintpalette") }
+                .menuStyle(.borderlessButton).fixedSize().help("切换主题")
                 Text(store.data.timer.phase.title)
                     .padding(.horizontal, 9).padding(.vertical, 5)
-                    .background(Palette.surface.opacity(0.78), in: Capsule())
+                    .background(Palette.surface.opacity(ThemeOpacity.menuChip), in: Capsule())
             }.font(.system(size: 11, weight: .medium)).foregroundStyle(Palette.text)
             Spacer(minLength: 4)
             Text(TimeText.clock(store.remaining))
                 .font(.system(size: 39, weight: .light, design: .rounded)).monospacedDigit()
                 .padding(.horizontal, 16).padding(.vertical, 6)
-                .background(Palette.surface.opacity(0.84), in: RoundedRectangle(cornerRadius: 14))
+                .background(Palette.surface.opacity(ThemeOpacity.menuTimer), in: RoundedRectangle(cornerRadius: 14))
                 .accessibilityLabel("剩余 \(TimeText.clock(store.remaining))")
             Button { store.toggleTimer() } label: {
                 Label(store.data.timer.isRunning ? "暂停计时" : "开始 / 继续", systemImage: store.data.timer.isRunning ? "pause.fill" : "play.fill")
                     .font(.system(size: 12, weight: .medium)).padding(.horizontal, 18).padding(.vertical, 9)
-                    .foregroundStyle(.white).background(Palette.accent, in: Capsule())
+                    .foregroundStyle(Palette.onAccent).background(Palette.accent, in: Capsule())
             }.buttonStyle(.plain)
             Spacer(minLength: 4)
             HStack {
@@ -108,13 +121,19 @@ struct MenuBarView: View {
                     Text("今天已完成 \(store.today.completedRounds) 轮").font(.system(size: 10)).foregroundStyle(Palette.secondary)
                 }
                 Spacer()
-                IconButton(icon: audio.wantsToPlay ? "pause.fill" : "play.fill", title: "播放或暂停音乐", color: Palette.accent) { store.togglePlayback() }
-            }.padding(12).background(Palette.surface.opacity(0.82), in: RoundedRectangle(cornerRadius: 13))
+                HStack(spacing: 0) {
+                    IconButton(icon: "backward.end.fill", title: "上一首", color: Palette.accent) { store.previousTrack() }
+                        .disabled(store.playbackTracks.isEmpty)
+                    IconButton(icon: audio.wantsToPlay ? "pause.fill" : "play.fill", title: "播放或暂停音乐", color: Palette.accent) { store.togglePlayback() }
+                    IconButton(icon: "forward.end.fill", title: "下一首", color: Palette.accent) { store.nextTrack() }
+                        .disabled(store.playbackTracks.isEmpty)
+                }.fixedSize()
+            }.padding(12).background(Palette.surface.opacity(ThemeOpacity.menuMusic), in: RoundedRectangle(cornerRadius: 13))
             HStack {
                 Button { MainWindowPresenter.open(using: openWindow) } label: {
                     Label("打开留白", systemImage: "arrow.up.forward.app")
                         .padding(.horizontal, 10).padding(.vertical, 7)
-                        .background(Palette.surface.opacity(0.84), in: Capsule())
+                        .background(Palette.surface.opacity(ThemeOpacity.menuAction), in: Capsule())
                 }.buttonStyle(.plain)
                 Spacer()
                 Button("退出") { NSApp.terminate(nil) }.buttonStyle(.plain).foregroundStyle(colors.ink)

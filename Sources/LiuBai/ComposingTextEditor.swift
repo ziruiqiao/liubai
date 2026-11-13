@@ -64,6 +64,7 @@ struct ComposingTextEditor: NSViewRepresentable {
             return
         }
         coordinator.parent = self
+        if !editor.hasMarkedText() { editor.textColor = NSColor(Palette.text); editor.insertionPointColor = NSColor(Palette.accent) }
         guard !editor.hasMarkedText(), editor.string != text else { return }
         let selection = editor.selectedRange()
         editor.string = text
@@ -156,6 +157,7 @@ struct ComposingTextField: NSViewRepresentable {
         }
         coordinator.parent = self
         guard (field.currentEditor() as? NSTextView)?.hasMarkedText() != true else { return }
+        field.textColor = NSColor(Palette.text)
         if field.stringValue != text { field.stringValue = text }
     }
     static func dismantleNSView(_ field: NSTextField, coordinator: Coordinator) {

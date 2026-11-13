@@ -21,11 +21,24 @@ enum SkyPreviewExporter {
         try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: true)
         let store = AppStore()
         try NativeChecks.run(store: store)
+        if CommandLine.arguments.contains("--native-checks-only") { return }
+        let initialTheme = ThemeManager.shared.selectedID
+        for option in ThemeManager.shared.options {
+            ThemeManager.shared.select(option.id)
+            let date = Calendar.autoupdatingCurrent.startOfDay(for: Date()).addingTimeInterval(9 * 3600)
+            let view = RootView(skyDate: date, motionDate: date).environmentObject(store).environmentObject(store.audio).environmentObject(store.favorites).environmentObject(store.weather)
+            try snapshot(view, width: 1200, height: 840).write(to: destination.appendingPathComponent("theme-\(option.id).png"))
+            try snapshot(MenuBarView(skyDate: date, motionDate: date).environmentObject(store).environmentObject(store.audio).environmentObject(store.weather), width: 320, height: 350, chrome: false).write(to: destination.appendingPathComponent("menu-theme-\(option.id).png"))
+        }
+        ThemeManager.shared.select(initialTheme)
         store.screen = .focus
         store.data.preferences = Preferences()
         store.data.timer.select(.focus, preferences: store.data.preferences)
         store.data.intention = ""
         let start = Calendar.autoupdatingCurrent.startOfDay(for: Date())
+        let skyReferenceDate = start.addingTimeInterval(9 * 3600)
+        try snapshot(FocusSkyScene(date: skyReferenceDate, motionDate: skyReferenceDate), width: 1000, height: 600, chrome: false)
+            .write(to: destination.appendingPathComponent("sky-reference.png"))
         for (hour, width, height) in [(9.0, 1200.0, 840.0), (17.5, 1200, 840), (21.0, 1200, 840), (9.0, 1600, 1000), (21.0, 1600, 1000)] {
             let date = start.addingTimeInterval(hour * 3600)
             let view = RootView(skyDate: date, motionDate: date)
@@ -46,6 +59,12 @@ enum SkyPreviewExporter {
             try png.write(to: destination.appendingPathComponent("\(page.rawValue).png"))
         }
         store.screen = .focus
+        for (name, hour, width, height) in [("minimum", 9.0, 1080.0, 760.0), ("night", 21.0, 1200, 840), ("large", 9.0, 1600, 1000)] {
+            let date = start.addingTimeInterval(hour * 3600)
+            let view = RootView(skyDate: date, motionDate: date, sidebarCollapsedOverride: true)
+                .environmentObject(store).environmentObject(store.audio).environmentObject(store.favorites).environmentObject(store.weather)
+            try snapshot(view, width: width, height: height).write(to: destination.appendingPathComponent("focus-collapsed-\(name).png"))
+        }
         for (name, effect, hour, width, height) in [
             ("minimum", SkyWeather.clear, 9.0, 1080.0, 760.0),
             ("rain", .rainPreview, 9.0, 1200, 840),

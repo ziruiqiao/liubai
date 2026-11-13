@@ -126,7 +126,7 @@ final class AppStore: ObservableObject {
                 var day = data.dailyStats[key] ?? DailyStats(id: key)
                 day.usedPomodoro = true
                 data.dailyStats[key] = day
-                if resumeMusicAfterBreak { audio.resume(); resumeMusicAfterBreak = false }
+                resumeBreakMusicIfFocusing()
             }
         }
         saveNow()
@@ -140,10 +140,8 @@ final class AppStore: ObservableObject {
     func selectPhase(_ phase: TimerPhase) {
         tick(at: Date())
         data.finishFocusBlock(at: now, completed: false)
-        let wasBreak = data.timer.phase != .focus
         data.timer.select(phase, preferences: data.preferences)
         if phase != .focus && data.preferences.pauseMusicDuringBreak { pauseForBreak() }
-        if wasBreak && phase == .focus && resumeMusicAfterBreak { audio.resume(); resumeMusicAfterBreak = false }
         saveNow()
     }
     func updatePreferences(_ update: (inout Preferences) -> Void) {
@@ -257,6 +255,13 @@ final class AppStore: ObservableObject {
         data.journal[entry.id] = entry
         scheduleSave()
     }
+    func addMood(_ input: String, for date: Date) -> Bool {
+        guard let mood = data.registerMood(input) else { return false }
+        updateJournal(for: date) { $0.mood = mood }
+        saveNow()
+        return true
+    }
+    func previewCompletionSound() { completionChime.play(volume: data.preferences.chimeVolume) }
     func deleteJournal(for date: Date) {
         data.journal.removeValue(forKey: DayKey.string(for: date))
         saveNow()
@@ -351,13 +356,19 @@ final class AppStore: ObservableObject {
                 if data.preferences.pauseMusicDuringBreak { pauseForBreak() }
                 notice = "本轮专注已完成。"
             } else {
-                if resumeMusicAfterBreak { audio.resume(); resumeMusicAfterBreak = false }
                 notice = "休息已结束。"
             }
             if data.timer.isRunning && data.timer.phase == .focus { data.beginFocusBlock(at: date) }
-            if data.preferences.soundEnabled { completionChime.play() }
+            resumeBreakMusicIfFocusing()
+            if data.preferences.soundEnabled { completionChime.play(volume: data.preferences.chimeVolume) }
             saveNow()
         } else if date.timeIntervalSince(lastDiskSave) >= 15 { saveNow() }
+    }
+    private func resumeBreakMusicIfFocusing() {
+        // Preparing a focus phase after a break is not the same as starting it.
+        guard data.timer.phase == .focus, data.timer.isRunning, resumeMusicAfterBreak else { return }
+        resumeMusicAfterBreak = false
+        audio.resume()
     }
     private func pauseForBreak() {
         if audio.wantsToPlay { resumeMusicAfterBreak = true; audio.pause() }
@@ -376,3 +387,48 @@ final class AppStore: ObservableObject {
         weather.refresh(force: false)
     }
 }
+
+#if DEBUG
+extension AppStore {
+    /// Exercise the actual completion/manual-start paths without network audio.
+    func checkBreakMusicResumption() throws {
+        let original = data
+        let originalPending = resumeMusicAfterBreak
+        let originalTick = lastTick
+        let originalNow = now
+        defer {
+            data = original
+            resumeMusicAfterBreak = originalPending
+            lastTick = originalTick
+            now = originalNow
+            saveNow()
+        }
+        for phase in [TimerPhase.shortBreak, .longBreak] {
+            for automatically in [false, true] {
+                data = AppData()
+                data.preferences.soundEnabled = false
+                data.preferences.autoStartFocus = phase == .shortBreak ? automatically : !automatically
+                data.preferences.autoStartCycle = phase == .longBreak ? automatically : !automatically
+                data.timer.select(phase, preferences: data.preferences)
+                let finish = Date()
+                data.timer.start(at: finish.addingTimeInterval(-data.preferences.duration(for: phase)))
+                resumeMusicAfterBreak = true
+                tick(at: finish)
+                guard data.timer.isRunning == automatically, resumeMusicAfterBreak == !automatically else {
+                    throw NSError(domain: "BreakMusicCheck", code: 1, userInfo: [NSLocalizedDescriptionKey: "休息结束等待期间，必须保留暂停音乐，直到专注真正开始。"])
+                }
+                if !automatically {
+                    selectPhase(.focus)
+                    guard resumeMusicAfterBreak else {
+                        throw NSError(domain: "BreakMusicCheck", code: 2, userInfo: [NSLocalizedDescriptionKey: "只选择专注阶段不能自动恢复音乐。"])
+                    }
+                    toggleTimer()
+                    guard data.timer.isRunning, !resumeMusicAfterBreak else {
+                        throw NSError(domain: "BreakMusicCheck", code: 3, userInfo: [NSLocalizedDescriptionKey: "手动开始专注时应恢复此前因休息暂停的音乐。"])
+                    }
+                }
+            }
+        }
+    }
+}
+#endif

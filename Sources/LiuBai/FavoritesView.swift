@@ -66,7 +66,7 @@ struct FavoritesLoginView: View {
             HStack { Spacer(); IconButton(icon: "xmark", title: "取消连接收藏夹") { dismiss() } }
             SectionTitle(title: "扫码连接收藏夹")
             ZStack {
-                RoundedRectangle(cornerRadius: 18).fill(.white).frame(width: 218, height: 218)
+                RoundedRectangle(cornerRadius: 18).fill(Palette.qrBackground).frame(width: 218, height: 218)
                 if let challenge = favorites.challenge, let image = qrImage(challenge.url), !favorites.loginExpired {
                     Image(nsImage: image).interpolation(.none).resizable().scaledToFit().frame(width: 186, height: 186).accessibilityLabel("B 站登录二维码")
                 } else if favorites.loginWorking { ProgressView().controlSize(.regular) }
